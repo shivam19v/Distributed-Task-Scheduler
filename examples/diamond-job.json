@@ -1,0 +1,10 @@
+{
+  "name": "nightly-etl",
+  "tasks": [
+    { "name": "extract",   "type": "log",   "params": { "message": "extracting" } },
+    { "name": "transform-a", "type": "sleep", "params": { "seconds": 5 }, "dependsOn": ["extract"] },
+    { "name": "transform-b", "type": "flaky", "params": { "failUntilAttempt": 3 }, "dependsOn": ["extract"],
+      "maxAttempts": 5, "backoffSeconds": 2 },
+    { "name": "load", "type": "log", "params": { "message": "loaded" }, "dependsOn": ["transform-a", "transform-b"] }
+  ]
+}

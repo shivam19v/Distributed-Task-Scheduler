@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: distributed-job-scheduler
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/scheduler}
+    username: ${DB_USER:scheduler}
+    password: ${DB_PASSWORD:scheduler}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+  mvc:
+    problemdetails:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 40s
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+scheduler:
+  node-id: ${NODE_ID:}            # blank = hostname + random suffix
+  worker-concurrency: 8           # max tasks executed in parallel on this node
+  lease-duration: 30s             # a worker must heartbeat within this window
+  heartbeat-interval: 10s
+  poll-interval: 500ms
+  coordinator-interval: 1s        # leader: promote / skip / reap / roll up
+  leader-ttl: 5s
+  drain-timeout: 25s              # graceful shutdown: wait for in-flight tasks
+  http-allowed-hosts: []          # restrict the built-in `http` task type (recommended!)

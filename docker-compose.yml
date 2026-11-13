@@ -1,0 +1,59 @@
+name: job-scheduler
+
+x-scheduler: &scheduler
+  build: .
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis:    { condition: service_healthy }
+  environment: &scheduler-env
+    DB_URL: jdbc:postgresql://postgres:5432/scheduler
+    DB_USER: scheduler
+    DB_PASSWORD: scheduler
+    REDIS_HOST: redis
+  stop_grace_period: 45s
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: scheduler
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: scheduler
+    volumes:
+      - pgdata:/var/lib/postgresql        # PG 18+ image layout
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler -d scheduler"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Three identical nodes. Any of them accepts API calls, executes tasks,
+  # and competes for leadership of the coordinator.
+  scheduler-1:
+    <<: *scheduler
+    environment: { <<: *scheduler-env, NODE_ID: node-1 }
+    ports: ["8081:8080"]
+  scheduler-2:
+    <<: *scheduler
+    environment: { <<: *scheduler-env, NODE_ID: node-2 }
+    ports: ["8082:8080"]
+  scheduler-3:
+    <<: *scheduler
+    environment: { <<: *scheduler-env, NODE_ID: node-3 }
+    ports: ["8083:8080"]
+
+volumes:
+  pgdata:
+  redisdata:
